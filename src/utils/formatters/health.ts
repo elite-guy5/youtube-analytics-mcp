@@ -110,13 +110,14 @@ export function parseComparisonData(comparisonResult: any): ComparisonData | nul
   ];
 
   metricsToCompare.forEach(metric => {
-    const change = metric.p1 - metric.p2;
-    const percentChange = calculatePercentageChange(metric.p2, metric.p1);
+    // Period 1 is the baseline (old), period 2 the comparison (new)
+    const change = metric.p2 - metric.p1;
+    const percentChange = calculatePercentageChange(metric.p1, metric.p2);
     const direction = change > 0 ? '📈' : change < 0 ? '📉' : '➡️';
 
     changes[metric.key] = {
-      oldValue: metric.p2,
-      newValue: metric.p1,
+      oldValue: metric.p1,
+      newValue: metric.p2,
       change,
       percentChange,
       direction

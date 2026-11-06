@@ -381,8 +381,8 @@ export class YouTubeClient {
         const period1Value = Number(period1Data.rows[0][0]) || 0;
         const period2Value = Number(period2Data.rows[0][0]) || 0;
         
-        if (period2Value > 0) {
-          changePercent = ((period1Value - period2Value) / period2Value) * 100;
+        if (period1Value > 0) {
+          changePercent = ((period2Value - period1Value) / period1Value) * 100;
         }
       }
 
