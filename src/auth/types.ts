@@ -1,14 +1,26 @@
 
-export interface AuthConfig {
-    web: {
-      client_id: string;
-      project_id: string;
-      auth_uri: string;
-      token_uri: string;
-      auth_provider_x509_cert_url: string;
-      client_secret: string;
-      redirect_uris: string[];
-    };
+export interface OAuthClientKeys {
+    client_id: string;
+    project_id: string;
+    auth_uri: string;
+    token_uri: string;
+    auth_provider_x509_cert_url: string;
+    client_secret: string;
+    redirect_uris: string[];
+  }
+
+  // Google issues "web" (Web application) or "installed" (Desktop app) client files
+  export interface AuthConfig {
+    web?: OAuthClientKeys;
+    installed?: OAuthClientKeys;
+  }
+
+  export function clientKeys(config: AuthConfig): OAuthClientKeys {
+    const keys = config.installed ?? config.web;
+    if (!keys) {
+      throw new AuthenticationError('credentials.json has no "installed" or "web" client section');
+    }
+    return keys;
   }
   
   export interface TokenData {

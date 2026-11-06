@@ -1,8 +1,13 @@
 import { authenticate } from '@google-cloud/local-auth';
 import { promises as fs } from 'fs';
-import { OAuth2Client } from 'google-auth-library';
+import { Auth, google } from 'googleapis';
 import path from 'path';
-import { AuthConfig, AuthenticationError, TokenData, TokenExpiredError } from './types.js';
+
+// Use googleapis' own bundled google-auth-library. local-auth and the top-level
+// google-auth-library dependency ship different versions, and googleapis silently
+// drops auth clients from other versions (requests go out unauthenticated).
+type OAuth2Client = Auth.OAuth2Client;
+import { AuthConfig, AuthenticationError, clientKeys, TokenData, TokenExpiredError } from './types.js';
 
 export class AuthManager {
   private readonly AUTH_DIR = path.join(process.cwd(), 'src', 'auth');
@@ -41,10 +46,10 @@ export class AuthManager {
       const credentials: AuthConfig = JSON.parse(credentialsContent);
       
       // Create OAuth2Client with proper credentials
-      this.authClient = new OAuth2Client(
-        credentials.web.client_id,
-        credentials.web.client_secret,
-        credentials.web.redirect_uris[0]
+      this.authClient = new google.auth.OAuth2(
+        clientKeys(credentials).client_id,
+        clientKeys(credentials).client_secret,
+        clientKeys(credentials).redirect_uris[0]
       );
       
       // Set the stored tokens
@@ -81,19 +86,26 @@ export class AuthManager {
       console.log('Auth manager CREDENTIALS_PATH', this.CREDENTIALS_PATH);
 
       // Trigger OAuth flow using local-auth
-      const client = await authenticate({
+      const localClient = await authenticate({
         scopes: this.SCOPES,
         keyfilePath: this.CREDENTIALS_PATH,
       });
 
-      // Save tokens
-      if (client.credentials) {
-        this.authClient = client as unknown as OAuth2Client;
-        await this.saveToken(this.authClient);
-        console.log('Authentication successful! Tokens saved.');
-      }
+      // Copy tokens into a client googleapis recognizes
+      const credentialsContent = await fs.readFile(this.CREDENTIALS_PATH, 'utf8');
+      const credentials: AuthConfig = JSON.parse(credentialsContent);
+      const client = new google.auth.OAuth2(
+        clientKeys(credentials).client_id,
+        clientKeys(credentials).client_secret,
+        clientKeys(credentials).redirect_uris[0]
+      );
+      client.setCredentials(localClient.credentials as Auth.Credentials);
 
-      return this.authClient || (client as unknown as OAuth2Client);
+      this.authClient = client;
+      await this.saveToken(client);
+      console.log('Authentication successful! Tokens saved.');
+
+      return client;
     } catch (error) {
       if (error instanceof AuthenticationError) {
         throw error;
@@ -142,8 +154,8 @@ export class AuthManager {
 
       const tokenData: TokenData = {
         type: 'authorized_user',
-        client_id: credentials.web.client_id,
-        client_secret: credentials.web.client_secret,
+        client_id: clientKeys(credentials).client_id,
+        client_secret: clientKeys(credentials).client_secret,
         refresh_token: client.credentials.refresh_token!,
         access_token: client.credentials.access_token || undefined,
         expiry_date: client.credentials.expiry_date || undefined

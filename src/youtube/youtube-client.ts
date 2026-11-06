@@ -1,5 +1,6 @@
-import { OAuth2Client } from 'google-auth-library';
-import { google, youtube_v3, youtubeAnalytics_v2 } from 'googleapis';
+import { Auth, google, youtube_v3, youtubeAnalytics_v2 } from 'googleapis';
+
+type OAuth2Client = Auth.OAuth2Client;
 import {
   AnalyticsParams,
   ChannelInfo,
