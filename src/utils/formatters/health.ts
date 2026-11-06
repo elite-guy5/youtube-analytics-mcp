@@ -37,36 +37,36 @@ export function parseChannelOverview(data: ParsedAnalytics): ChannelOverviewData
   }
 
   const metrics = data.columnHeaders?.map((header: ColumnHeader) => header.name) || [];
-  const totalRow = data.rows[0] || [];
-  
-  const result: ChannelOverviewData = {
-    totalViews: 0,
-    estimatedMinutesWatched: 0,
-    subscribersGained: 0,
-    averageViewDuration: 0
-  };
-  
-  metrics.forEach((metric: string, index: number) => {
-    const value = Number(totalRow[index] || 0);
-    
-    switch (metric) {
-      case 'views':
-        result.totalViews = value;
-        break;
-      case 'estimatedMinutesWatched':
-        result.estimatedMinutesWatched = value;
-        break;
-      case 'subscribersGained':
-        result.subscribersGained = value;
-        break;
-      case 'averageViewDuration':
-        result.averageViewDuration = value;
-        break;
-      case 'averageViewPercentage':
-        result.averageViewPercentage = value;
-        break;
-    }
+  const col = (name: string) => metrics.indexOf(name);
+  const viewsIdx = col('views');
+
+  // Rows may be one per day (dimensions=day): sum additive metrics across all
+  // rows and weight averages by each row's views.
+  let totalViews = 0;
+  let minutes = 0;
+  let subsGained = 0;
+  let durationWeighted = 0;
+  let percentageWeighted = 0;
+
+  data.rows.forEach(row => {
+    const views = viewsIdx >= 0 ? Number(row[viewsIdx] || 0) : 0;
+    totalViews += views;
+    if (col('estimatedMinutesWatched') >= 0) minutes += Number(row[col('estimatedMinutesWatched')] || 0);
+    if (col('subscribersGained') >= 0) subsGained += Number(row[col('subscribersGained')] || 0);
+    if (col('averageViewDuration') >= 0) durationWeighted += Number(row[col('averageViewDuration')] || 0) * views;
+    if (col('averageViewPercentage') >= 0) percentageWeighted += Number(row[col('averageViewPercentage')] || 0) * views;
   });
+
+  const result: ChannelOverviewData = {
+    totalViews,
+    estimatedMinutesWatched: minutes,
+    subscribersGained: subsGained,
+    averageViewDuration: totalViews > 0 ? durationWeighted / totalViews : 0
+  };
+
+  if (col('averageViewPercentage') >= 0) {
+    result.averageViewPercentage = totalViews > 0 ? percentageWeighted / totalViews : 0;
+  }
 
   return result;
 }
@@ -102,12 +102,18 @@ export function parseComparisonData(comparisonResult: any): ComparisonData | nul
 
   const changes: ComparisonData['changes'] = {};
   
-  // Calculate changes for each metric
-  const metricsToCompare = [
-    { key: 'views', name: 'Views', p1: period1Data.totalViews, p2: period2Data.totalViews },
-    { key: 'estimatedMinutesWatched', name: 'Watch Time', p1: period1Data.estimatedMinutesWatched, p2: period2Data.estimatedMinutesWatched },
-    { key: 'subscribersGained', name: 'Subscribers', p1: period1Data.subscribersGained, p2: period2Data.subscribersGained }
-  ];
+  // Compare every metric the API returned (comparison queries have no
+  // dimensions, so each period is a single totals row)
+  const metricValue = (analytics: ParsedAnalytics, name: string): number => {
+    const idx = analytics.columnHeaders?.findIndex((h: ColumnHeader) => h.name === name) ?? -1;
+    return idx >= 0 ? Number(analytics.rows?.[0]?.[idx] || 0) : 0;
+  };
+  const metricNames = parsed.period1Data.columnHeaders?.map((h: ColumnHeader) => h.name) || [];
+  const metricsToCompare = metricNames.map((name: string) => ({
+    key: name,
+    p1: metricValue(parsed.period1Data, name),
+    p2: metricValue(parsed.period2Data, name)
+  }));
 
   metricsToCompare.forEach(metric => {
     // Period 1 is the baseline (old), period 2 the comparison (new)

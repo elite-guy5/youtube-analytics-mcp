@@ -79,22 +79,23 @@ export function formatSubscriberAnalytics(subscriberData: SubscriberData[]): str
   let nonSubscriberViews = 0;
   
   subscriberData.forEach(data => {
-    if (data.subscribedStatus && data.subscribedStatus.toLowerCase().includes('subscribed')) {
+    // Values are SUBSCRIBED / UNSUBSCRIBED; a substring check matches both
+    if (data.subscribedStatus?.toUpperCase() === 'SUBSCRIBED') {
       subscriberViews += data.views;
     } else {
       nonSubscriberViews += data.views;
     }
   });
-  
+
   const totalViews = subscriberViews + nonSubscriberViews;
-  
+
   if (totalViews > 0) {
     const subscriberPercentage = (subscriberViews / totalViews) * 100;
     const nonSubscriberPercentage = (nonSubscriberViews / totalViews) * 100;
     
     output += `📊 View Distribution:\n`;
-    output += `👥 Subscriber Views: ${formatNumber(subscriberViews)} (${formatPercentage(subscriberPercentage)}%)\n`;
-    output += `🆕 Non-Subscriber Views: ${formatNumber(nonSubscriberViews)} (${formatPercentage(nonSubscriberPercentage)}%)\n\n`;
+    output += `👥 Subscriber Views: ${formatNumber(subscriberViews)} (${formatPercentage(subscriberPercentage)})\n`;
+    output += `🆕 Non-Subscriber Views: ${formatNumber(nonSubscriberViews)} (${formatPercentage(nonSubscriberPercentage)})\n\n`;
     
     // Growth insights
     if (nonSubscriberPercentage > 50) {
@@ -134,7 +135,7 @@ export function generateAudienceInsights(geographicData: GeographicData[], subsc
     let nonSubscriberViews = 0;
     
     subscriberData.forEach(data => {
-      if (data.subscribedStatus && data.subscribedStatus.toLowerCase().includes('subscribed')) {
+      if (data.subscribedStatus?.toUpperCase() === 'SUBSCRIBED') {
         subscriberViews += data.views;
       } else {
         nonSubscriberViews += data.views;

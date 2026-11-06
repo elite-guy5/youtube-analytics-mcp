@@ -320,9 +320,8 @@ export class YouTubeClient {
           startDate: params.startDate,
           endDate: params.endDate,
           metrics: 'views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost',
-          dimensions: 'day',
-          ids: 'channel==MINE',
-          sort: 'day'
+          // No dimension: one totals row, so averages come from YouTube itself
+          ids: 'channel==MINE'
         });
       });
 
